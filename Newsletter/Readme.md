@@ -8,7 +8,6 @@ This repository contains a sanitized n8n workflow that automates an AI newslette
 - Final merge into an email-ready HTML newsletter
 - Gmail draft creation
 
-Live demo JSON: `workflow/Agent-Newsletter-System.publish-safe.json`
 
 Important: This export is publish-safe; all credentials and personal identifiers are replaced with placeholders. You must insert your own credentials and emails in n8n.
 
