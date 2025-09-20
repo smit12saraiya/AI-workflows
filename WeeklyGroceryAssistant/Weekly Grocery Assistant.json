@@ -1,0 +1,743 @@
+{
+  "name": "Weekly Grocery Assistant",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1904,
+        -1252
+      ],
+      "id": "5f9c861b-0630-4124-a05c-efcf7dcfa355",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1a9XpZ_AD-r0XcJMGZgEE99sTPx766kS5NdVjBwlgNB4",
+          "mode": "list",
+          "cachedResultName": "Meals Database",
+          "cachedResultUrl": "<Google Document URL>"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "WeeklyMeals",
+          "cachedResultUrl": "<Google Individual Sheets URL>"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1680,
+        -1252
+      ],
+      "id": "41f2e8c8-c7d2-4bd6-a5b3-64dd3a4da7a6",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<REPLACE_WITH_YOUR_CREDENTIAL_ID>",
+          "name": "<REPLACE_WITH_YOUR_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "currentWeekMeals",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        -1252
+      ],
+      "id": "113e8824-ad1a-4da3-b4d1-7fc6d1ed26ca",
+      "name": "Split Out",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b3d762c7-2d60-4d90-a0bf-7ffc48cef507",
+              "leftValue": "={{ $json['Include in Week'] }}",
+              "rightValue": "Yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "037bc4f4-bd8a-4134-bbbf-9eb8c3c061ed",
+              "leftValue": "={{ $json['Ingredients To Cook'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        112,
+        -1252
+      ],
+      "id": "b2ada10a-e19d-4bbc-99c4-361043ed92e2",
+      "name": "Check if Included in Week And Ingredients Empty"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst currentWeekMeals = items.map((item) => item.json);\nreturn { currentWeekMeals };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1456,
+        -1252
+      ],
+      "id": "ab48416f-9861-4d66-af8c-b70e844d4d0a",
+      "name": "Json to array for Split Out"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\"type\": \"object\",\n  \"required\": [\"row_number\",\"dish\", \"servings\", \"ingredients\"],\n\"properties\": {\n\"dish\": { \"type\": \"string\" },\n\"servings\": { \"type\": \"number\" },\n  \"row_number\": { \"type\": \"number\" },\n  \"ingredients\": {\n\"type\": \"array\",\n\"minItems\": 1,\n  \"items\": {\n\"type\": \"object\",\n\"required\": [\"item\", \"qty\", \"unit\"],\n  \"properties\": {\n    \"item\": { \"type\": \"string\" },\n    \"qty\": { \"type\": \"number\" },\n      \"unit\": { \"type\": \"string\",\n        \"enum\": [\"g\", \"ml\", \"pcs\", \"tbsp\", \"tsp\", \"cup\"] },\n\"notes\": { \"type\": \"string\" }\n        },\n  \"additionalProperties\": false\n  }\n}\n},\n\"additionalProperties\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        472,
+        -1280
+      ],
+      "id": "1e0edb05-c688-400c-a350-c18c1abdbe31",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-3.7-sonnet",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        344,
+        -1280
+      ],
+      "id": "09458760-e79d-4ddc-a8ef-8ea5052e49ee",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "oG86nD6SFEOLT0z2",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Row Number : {{ $json.row_number }}\n\nMeal Options : {{ $json['Meal Options'] }}\n\nServings : {{ $json.Servings }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# Overview\n\nYou are a precise meal‑planning assistant. Given a dish name and servings from User prompt, return only a normalized ingredient list with realistic quantities in common grocery units. \n\n## Objective\n\nCreate me items list which i can also use to design my grocery list based on the items required. Keep items generic (no brands), prefer base ingredients, and avoid cooking steps or prose. Do not invent uncommon items; use widely available staples. Scale quantities to the requested servings. Use consistent units: g, ml, pcs, tbsp, tsp, cup. Prefer grams for solids and ml for liquids; use pcs for whole items (e.g., onion, egg). If an item is measured in spoons/cups, keep that unit and avoid mixing units for the same item.\n\n## Rules To Follow\n\n1. No markdown or extra text—JSON only.\n2. No brand names; no regional SKUs.\n3. Combine obvious duplicates (e.g., “tomato” not “roma tomato”).\n4. Reasonable defaults if ambiguous; never zero quantities.\n5. Keep ingredient names in singular, lowercase (e.g., “tomato”, “onion”, “chicken breast”).\n6. Keep list concise; exclude pantry-level micro-spices unless essential to the dish.\n7. Do not include cooking instructions.\n\nThis is just the row number for my mapping, you need to store in context and we will use it in Structured output parser {{ $json.row_number }}. So make sure you add this."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -1504
+      ],
+      "id": "9ed2b811-01ff-405d-9ade-360f1c6d1030",
+      "name": "Ingredient Generator Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatIngredientsForCell(row) {\n  const dish = row.dish || 'the dish';\n  const servings = row.servings ? ` (serves ${row.servings})` : '';\n  const items = (row.ingredients || [])\n    .map(i => {\n      const qty = (i.qty !== undefined && i.qty !== null) ? `${i.qty}` : '';\n      const unit = i.unit ? `${i.unit}` : '';\n      const qtyUnit = [qty, unit].filter(Boolean).join(' ');\n      const base = i.item ? i.item.toLowerCase() : 'ingredient';\n      const notes = i.notes ? ` — ${i.notes}` : '';\n      return qtyUnit ? `${base} (${qtyUnit})` : `${base}`;\n    })\n    .join(', ');\n\n  return `For making ${dish}${servings}, you need: ${items}.`;\n}\n\nconst output = []\nfor (const item of $input.all()) {\nconst row = {\n  row_number : item.json.output.row_number,\n  dish: item.json.output.dish,\n  servings: item.json.output.servings,\n  ingredients: item.json.output.ingredients\n};\n  const formattedData = formatIngredientsForCell(row);\n  output.push({\n    json: {\n      ...item.json,\n      formattedData\n    }\n  })\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        -1400
+      ],
+      "id": "db7a6184-4e53-4a58-b2a0-e9a9e73e76be",
+      "name": "Final code Formatter"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1a9XpZ_AD-r0XcJMGZgEE99sTPx766kS5NdVjBwlgNB4",
+          "mode": "list",
+          "cachedResultName": "Meals Database",
+          "cachedResultUrl": "<Google Document URL>"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "<Google Individual Sheets URL>"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Final code Formatter').item.json.output.row_number }}",
+            "Ingredients To Cook": "={{ $('Final code Formatter').item.json.formattedData }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Meal Options",
+              "displayName": "Meal Options",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Include in Week",
+              "displayName": "Include in Week",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ingredients To Cook",
+              "displayName": "Ingredients To Cook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Servings",
+              "displayName": "Servings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Youtube Link",
+              "displayName": "Youtube Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1136,
+        -1400
+      ],
+      "id": "ba6cf595-48cb-4c25-8996-f7f09eec2a35",
+      "name": "Update Ingredients in Meals Database",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<REPLACE_WITH_YOUR_CREDENTIAL_ID>",
+          "name": "<REPLACE_WITH_YOUR_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1a9XpZ_AD-r0XcJMGZgEE99sTPx766kS5NdVjBwlgNB4",
+          "mode": "list",
+          "cachedResultName": "Meals Database",
+          "cachedResultUrl": "<Google Document URL>"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "WeeklyMeals",
+          "cachedResultUrl": "<Google Individual Sheets URL>"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Include in Week": "No",
+            "Ingredients To Cook": "={{ \"\" }}",
+            "Meal Options": "={{ $json[\"Meal Options\"] }}",
+            "Servings": "={{ $json.Servings }}",
+            "Youtube Link": "={{ \"\" }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Meal Options",
+              "displayName": "Meal Options",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Include in Week",
+              "displayName": "Include in Week",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ingredients To Cook",
+              "displayName": "Ingredients To Cook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Servings",
+              "displayName": "Servings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Youtube Link",
+              "displayName": "Youtube Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1008,
+        -1252
+      ],
+      "id": "2effb37c-9202-4926-b46c-ecea12b5fabe",
+      "name": "Reset the Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<REPLACE_WITH_YOUR_CREDENTIAL_ID>",
+          "name": "<REPLACE_WITH_YOUR_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -1104
+      ],
+      "id": "a31e4da2-d01d-43e2-9f6b-03c559ede65e",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "content": "# Weekly Grocery Assistant",
+        "height": 80,
+        "width": 528,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -944,
+        -1728
+      ],
+      "typeVersion": 1,
+      "id": "92ca70ca-0622-473a-b4c2-df92f5ab171a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1a9XpZ_AD-r0XcJMGZgEE99sTPx766kS5NdVjBwlgNB4",
+          "mode": "list",
+          "cachedResultName": "Meals Database",
+          "cachedResultUrl": "<Google Document URL>"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "WeeklyMeals",
+          "cachedResultUrl": "<Google Individual Sheets URL>"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -112,
+        -1252
+      ],
+      "id": "a7b0580a-6103-4a9d-92da-2e4299331d9a",
+      "name": "Fetch meal preferences",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "<REPLACE_WITH_YOUR_CREDENTIAL_ID>",
+          "name": "<REPLACE_WITH_YOUR_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        -1252
+      ],
+      "id": "b4002cb5-b640-4d52-b760-f1bd84bee8e5",
+      "name": "Wait For the Update",
+      "webhookId": "9b39d99a-45f6-4e68-b44e-f51e1e9321a4",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 2,
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collapse stream to a single item\nreturn [{ json: { ok: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        -1252
+      ],
+      "id": "9b6ef5e1-5d69-4ddf-8360-2111e4221f44",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "sendTo": "<YOUR_EMAIL_ADDRESS>",
+        "subject": "Weekly Planner Reminder",
+        "message": "=<div style=\"font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333;\">\n  <h2 style=\"color: #4CAF50; margin-bottom: 10px;\">🍴 Weekly Meal Planner Reminder</h2>\n  <p>Hi there,</p>\n  <p>This is your weekly reminder to update your meal plan.</p>\n  \n  <p style=\"margin: 20px 0;\">\n    👉 Please update the sheet here: \n    <a href=\"https://docs.google.com/spreadsheets/d/1a9XpZ_AD-r0XcJMGZgEE99sTPx766kS5NdVjBwlgNB4/edit?usp=sharing\" \n       style=\"color: #4CAF50; text-decoration: none; font-weight: bold;\">\n       Google Sheets - Meal Planner\n    </a>\n  </p>\n  \n  <p>Staying consistent helps you stay organized for the week ahead. 💪</p>\n  \n  <hr style=\"margin: 25px 0; border: none; border-top: 1px solid #ddd;\">\n  <p style=\"font-size: 12px; color: #777;\">\n    This is an automated reminder sent via n8n workflow.<br>\n    Please do not reply to this email.\n  </p>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -560,
+        -1252
+      ],
+      "id": "ad8a8898-f3c6-4100-add6-3f4919061816",
+      "name": "Send a message",
+      "webhookId": "98f6e6de-ff62-4f2b-bd5a-5ae9a5333f55",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<REPLACE_WITH_YOUR_CREDENTIAL_ID>",
+          "name": "<REPLACE_WITH_YOUR_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hQJ4zNZ1Wk5muwJO",
+          "mode": "list",
+          "cachedResultName": "My project — Youtube Enrichment"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        -1400
+      ],
+      "id": "a7012ba1-7b6f-468b-9d21-4e9b68a50dda",
+      "name": "Call 'Youtube Enrichment'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Json to array for Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Reset the Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Json to array for Split Out": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Included in Week And Ingredients Empty": {
+      "main": [
+        [
+          {
+            "node": "Ingredient Generator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Ingredient Generator Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Ingredient Generator Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingredient Generator Agent": {
+      "main": [
+        [
+          {
+            "node": "Final code Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final code Formatter": {
+      "main": [
+        [
+          {
+            "node": "Call 'Youtube Enrichment'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset the Sheet": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch meal preferences": {
+      "main": [
+        [
+          {
+            "node": "Check if Included in Week And Ingredients Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For the Update": {
+      "main": [
+        [
+          {
+            "node": "Fetch meal preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Check if Included in Week And Ingredients Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Wait For the Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Youtube Enrichment'": {
+      "main": [
+        [
+          {
+            "node": "Update Ingredients in Meals Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c684b681-7733-4a75-bc6e-bbdb6827ce8b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5ae1ab82901b483d677523982b45f97904d59b0024907347c0691e19a4b9a3e7"
+  },
+  "id": "8Osc4Ytyy2A3dojv",
+  "tags": []
+}
