@@ -13,6 +13,8 @@ This workflow helps you manage weekly meal planning by:
 
 ## 🏗️ Workflow Architecture
 
+### Note: replace manual trigger with scheduled trigger based on your requirements.
+
 ```
 Manual Trigger → Google Sheets (Read) → Process Data → AI Ingredient Generation → Update Database with ingredients list and Youtube video
 ```
